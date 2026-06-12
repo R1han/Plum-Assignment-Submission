@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ClaimCategory(str, Enum):
@@ -56,8 +56,7 @@ class DocumentContent(BaseModel):
     line_items: list[LineItem] = Field(default_factory=list)
     total: float | None = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class DocumentInput(BaseModel):
@@ -101,6 +100,7 @@ class ClaimSubmission(BaseModel):
     treatment_date: date
     claimed_amount: float = Field(gt=0)
     hospital_name: str | None = None
+    pre_auth_reference: str | None = None
     # Submission date defaults to treatment date when absent (test fixtures
     # carry historical dates; a wall-clock default would fail the 30-day
     # submission deadline on every fixture). Real API submissions set this.
