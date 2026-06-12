@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   getPolicy,
@@ -31,6 +31,25 @@ export default function SubmitPage() {
   const [sample, setSample] = useState("clean");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const fileUrls = useMemo(
+    () => files.map((f) => URL.createObjectURL(f)),
+    [files],
+  );
+  useEffect(
+    () => () => fileUrls.forEach((u) => URL.revokeObjectURL(u)),
+    [fileUrls],
+  );
+
+  useEffect(() => {
+    if (previewIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewIndex(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewIndex]);
 
   useEffect(() => {
     getPolicy().then(setPolicy).catch((e) => setError(String(e)));
@@ -255,18 +274,27 @@ export default function SubmitPage() {
               )}
               {preset ? (
                 <div className="mt-2 space-y-2">
-                  {files.map((f) => (
-                    <div
+                  {files.map((f, i) => (
+                    <button
                       key={f.name}
-                      className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                      type="button"
+                      onClick={() => setPreviewIndex(i)}
+                      className="flex w-full items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-violet-300 hover:bg-violet-50"
+                      title="Click to view"
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={fileUrls[i]}
+                        alt={f.name}
+                        className="h-10 w-10 shrink-0 rounded border border-slate-200 object-cover"
+                      />
                       <span className="truncate font-mono text-xs">
                         {f.name}
                       </span>
-                      <span className="ml-2 shrink-0 text-xs text-slate-400">
-                        {(f.size / 1024).toFixed(0)} KB · auto-attached
+                      <span className="ml-auto shrink-0 text-xs text-slate-400">
+                        {(f.size / 1024).toFixed(0)} KB · view
                       </span>
-                    </div>
+                    </button>
                   ))}
                   <button
                     type="button"
@@ -309,6 +337,37 @@ export default function SubmitPage() {
           </p>
         )}
       </form>
+
+      {previewIndex !== null && files[previewIndex] && (
+        <div
+          onClick={() => setPreviewIndex(null)}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/80 p-6"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <span className="truncate font-mono text-xs text-slate-600">
+                {files[previewIndex].name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewIndex(null)}
+                className="ml-4 shrink-0 rounded px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
+              >
+                ✕ Close
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={fileUrls[previewIndex]}
+              alt={files[previewIndex].name}
+              className="min-h-0 flex-1 overflow-auto object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
