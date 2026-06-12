@@ -457,12 +457,14 @@ class RulesEngine:
             return []
 
         covered_list = category.covered_procedures + category.covered_items
-        excluded_list = (
-            category.excluded_procedures
-            + category.excluded_items
-            + self.policy.exclusions.dental_exclusions
-            + self.policy.exclusions.vision_exclusions
-        )
+        excluded_list = category.excluded_procedures + category.excluded_items
+        # Category-scoped global exclusion lists (dental/vision) only apply to
+        # their own category — screening a consultation bill against them
+        # would just add noise to verdicts and confidence.
+        if claim.claim_category.value == "DENTAL":
+            excluded_list = excluded_list + self.policy.exclusions.dental_exclusions
+        elif claim.claim_category.value == "VISION":
+            excluded_list = excluded_list + self.policy.exclusions.vision_exclusions
         verdicts: list[LineItemVerdict] = []
         for item in facts.line_items:
             verdict = self._screen_item(item, covered_list, excluded_list, certainty)

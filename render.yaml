@@ -1,0 +1,14 @@
+# Render Blueprint: deploys the FastAPI backend. The Next.js frontend deploys
+# to Vercel (root directory: frontend, env: NEXT_PUBLIC_API_URL=<this API URL>).
+services:
+  - type: web
+    name: plum-claims-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: http://localhost:3000
