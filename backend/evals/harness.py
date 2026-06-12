@@ -59,7 +59,6 @@ def evaluate_case(case: dict, outcome: ClaimOutcome) -> list[Check]:
     expected = case["expected"]
     d = outcome.decision
 
-    # --- generic expectations -----------------------------------------
     if expected.get("decision") is None and "decision" in expected:
         ok = outcome.outcome_type == OutcomeType.DOCUMENT_ISSUE and d is None
         checks.append(Check(
@@ -87,13 +86,12 @@ def evaluate_case(case: dict, outcome: ClaimOutcome) -> list[Check]:
             f"got {sorted(produced)}"))
 
     if "confidence_score" in expected and d is not None:
-        spec = expected["confidence_score"]  # e.g. "above 0.85"
+        spec = expected["confidence_score"]  
         threshold = float(spec.split()[-1])
         ok = d.confidence_score > threshold
         checks.append(Check(
             f"confidence {spec}", ok, f"got {d.confidence_score}"))
 
-    # --- case-specific "system_must" verifications ---------------------
     extra = _EXTRA_CHECKS.get(case["case_id"])
     if extra:
         checks.extend(extra(outcome))
@@ -231,7 +229,7 @@ def run_all() -> list[CaseResult]:
                 case_id=case["case_id"], case_name=case["case_name"],
                 outcome=outcome, checks=evaluate_case(case, outcome),
             ))
-        except Exception as e:  # noqa: BLE001 — a crash is an eval failure
+        except Exception as e:  
             results.append(CaseResult(
                 case_id=case["case_id"], case_name=case["case_name"],
                 outcome=None, error=f"{type(e).__name__}: {e}",

@@ -94,8 +94,6 @@ def policy_summary():
 
 
 def _process(claim: ClaimSubmission, db: Session) -> ClaimOutcome:
-    # Fold stored claim history into the fraud check (fixtures may also
-    # provide history inline; both are honored, deduped by claim_id).
     stored = repository.member_history(db, claim.member_id)
     claim = claim.model_copy(update={
         "claims_history": repository.merge_history(claim.claims_history, stored),
@@ -140,7 +138,6 @@ async def submit_claim_upload(
             treatment_date=date.fromisoformat(treatment_date),
             claimed_amount=claimed_amount,
             hospital_name=hospital_name,
-            submission_date=date.today(),
             documents=documents,
         )
     except ValueError as e:

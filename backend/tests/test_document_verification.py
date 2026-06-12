@@ -51,7 +51,6 @@ def test_tc001_wrong_document_type(agent):
     assert not result.ok
     issue = result.issues[0]
     assert issue.code == DocumentIssueCode.MISSING_DOCUMENT
-    # Message must name the uploaded type AND the required type — not generic.
     assert "prescription" in issue.message.lower()
     assert "hospital bill" in issue.message.lower()
     assert "2 prescriptions" in issue.message.lower()
@@ -72,7 +71,6 @@ def test_tc002_unreadable_document(agent):
     assert issue.code == DocumentIssueCode.UNREADABLE_DOCUMENT
     assert issue.file_id == "F004"
     assert "re-upload" in issue.message.lower()
-    # Must not read as a claim rejection
     assert "reject" not in issue.message.lower()
 
 
@@ -88,7 +86,6 @@ def test_tc003_documents_belong_to_different_patients(agent):
     assert not result.ok
     issue = result.issues[0]
     assert issue.code == DocumentIssueCode.PATIENT_MISMATCH
-    # Both names must be surfaced to the member.
     assert "Rajesh Kumar" in issue.message
     assert "Arjun Mehta" in issue.message
 
@@ -132,6 +129,6 @@ def test_non_member_patient_flagged(agent):
 def test_names_match_tolerance():
     assert names_match("Rajesh Kumar", "Mr. Rajesh Kumar")
     assert names_match("RAJESH KUMAR", "rajesh kumar")
-    assert names_match("Rajesh", "Rajesh Kumar")  # subset tolerated
+    assert names_match("Rajesh", "Rajesh Kumar") 
     assert not names_match("Rajesh Kumar", "Arjun Mehta")
-    assert names_match(None, "Rajesh Kumar")  # missing name is not a mismatch
+    assert names_match(None, "Rajesh Kumar")  

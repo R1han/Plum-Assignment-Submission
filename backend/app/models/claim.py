@@ -71,12 +71,10 @@ class DocumentInput(BaseModel):
 
     file_id: str
     file_name: str | None = None
-    # Fixture fields
     actual_type: DocumentType | None = None
     quality: DocumentQuality | None = None
     patient_name_on_doc: str | None = None
     content: DocumentContent | None = None
-    # Upload fields
     file_data: str | None = Field(default=None, repr=False)
     media_type: str | None = None
 
@@ -101,9 +99,6 @@ class ClaimSubmission(BaseModel):
     claimed_amount: float = Field(gt=0)
     hospital_name: str | None = None
     pre_auth_reference: str | None = None
-    # Submission date defaults to treatment date when absent (test fixtures
-    # carry historical dates; a wall-clock default would fail the 30-day
-    # submission deadline on every fixture). Real API submissions set this.
     submission_date: date | None = None
     ytd_claims_amount: float = 0.0
     claims_history: list[HistoricalClaim] = Field(default_factory=list)

@@ -47,7 +47,6 @@ class LLMClassifier(Classifier):
         self.failures: list[str] = []
         self._cache: dict[tuple, MatchResult | tuple] = {}
 
-    # -- hooks ---------------------------------------------------------
     def exclusion_fallback(self, text: str, policy: Policy) -> MatchResult:
         return self._match_against(
             text, policy.exclusions.conditions,
@@ -94,11 +93,10 @@ class LLMClassifier(Classifier):
                 result = (parsed.verdict, MatchResult(True, parsed.entry, "llm"))
             self._cache[key] = result
             return result
-        except Exception as e:  # noqa: BLE001 — degrade, never crash the pipeline
+        except Exception as e:  
             self.failures.append(f"procedure classification failed: {e}")
             return "unknown", MatchResult(False)
 
-    # -- internals -----------------------------------------------------
     def _match_against(self, text: str, entries: list[str], list_label: str) -> MatchResult:
         if not self.enabled or not text:
             return MatchResult(False)
@@ -130,6 +128,6 @@ class LLMClassifier(Classifier):
                 result = MatchResult(True, parsed.entry, "llm")
             self._cache[key] = result
             return result
-        except Exception as e:  # noqa: BLE001
+        except Exception as e: 
             self.failures.append(f"list classification failed: {e}")
             return MatchResult(False)

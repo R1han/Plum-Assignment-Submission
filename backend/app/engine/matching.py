@@ -18,8 +18,6 @@ import re
 from dataclasses import dataclass
 
 # Medical shorthand seen on Indian prescriptions (sample_documents_guide.md)
-# mapped onto the waiting-period condition keys found in policy_terms.json.
-# These are synonyms for the policy's own vocabulary, not policy rules.
 CONDITION_SYNONYMS: dict[str, list[str]] = {
     "diabetes": ["diabetes", "diabetic", "t2dm", "dm type 2", "mellitus"],
     "hypertension": ["hypertension", "htn", "high blood pressure"],
@@ -50,8 +48,8 @@ EXCLUSION_SYNONYMS: dict[str, list[str]] = {
 @dataclass
 class MatchResult:
     matched: bool
-    rule: str | None = None  # the policy list entry that matched
-    certainty: str = "none"  # "exact" | "keyword" | "none"
+    rule: str | None = None 
+    certainty: str = "none"  
 
 
 def normalize(text: str) -> str:
@@ -77,7 +75,6 @@ def match_against_list(text: str, policy_list: list[str]) -> MatchResult:
             return MatchResult(True, entry, "exact")
     for entry in policy_list:
         entry_norm = normalize(entry)
-        # Strip parentheticals for containment: "Orthodontic Treatment (Braces)"
         entry_core = normalize(re.sub(r"\(.*?\)", "", entry))
         if entry_core and (entry_core in needle or needle in entry_core):
             return MatchResult(True, entry, "keyword")

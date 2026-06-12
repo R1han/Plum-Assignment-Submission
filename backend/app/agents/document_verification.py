@@ -43,7 +43,7 @@ def names_match(a: str | None, b: str | None) -> bool:
     """Tolerant person-name comparison: token-set equality or containment
     ('Rajesh Kumar' matches 'Mr. Rajesh Kumar', not 'Arjun Mehta')."""
     if not a or not b:
-        return True  # absence of a name is a quality issue, not a mismatch
+        return True  
     ta, tb = _name_tokens(a), _name_tokens(b)
     if not ta or not tb:
         return True
@@ -58,7 +58,7 @@ def _human(doc_type: str, plural: bool = False) -> str:
 class VerificationResult(BaseModel):
     ok: bool
     issues: list[DocumentIssue] = Field(default_factory=list)
-    patient_name: str | None = None  # consensus patient across documents
+    patient_name: str | None = None  
 
 
 class DocumentVerificationAgent:
@@ -78,7 +78,6 @@ class DocumentVerificationAgent:
         issues += self._check_readability(claim, docs, trace)
         patient_name = None
         if not issues:
-            # Name checks only make sense once the right, readable docs exist.
             name_issues, patient_name = self._check_patient_consistency(
                 claim, docs, trace
             )
@@ -87,7 +86,6 @@ class DocumentVerificationAgent:
             ok=not issues, issues=issues, patient_name=patient_name
         )
 
-    # ------------------------------------------------------------------
     def _check_required_types(self, claim, docs, trace) -> list[DocumentIssue]:
         requirement = self.policy.get_document_requirement(claim.claim_category.value)
         if requirement is None:
@@ -168,7 +166,6 @@ class DocumentVerificationAgent:
         ]
         issues: list[DocumentIssue] = []
 
-        # Cross-document consistency
         for i in range(len(named)):
             for j in range(i + 1, len(named)):
                 (doc_a, name_a), (doc_b, name_b) = named[i], named[j]
@@ -200,7 +197,6 @@ class DocumentVerificationAgent:
 
         consensus = named[0][1] if named else None
 
-        # Roster check: patient must be the member or a covered dependent.
         if consensus:
             member = self.policy.get_member(claim.member_id)
             allowed = []
@@ -239,7 +235,6 @@ class DocumentVerificationAgent:
                     + (f" Patient: {consensus}." if consensus else ""))
         return issues, consensus
 
-    # ------------------------------------------------------------------
     @staticmethod
     def _summarize_uploads(present: list[str]) -> str:
         if not present:

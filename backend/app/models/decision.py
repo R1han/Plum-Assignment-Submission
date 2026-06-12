@@ -59,7 +59,7 @@ class DocumentIssueCode(str, Enum):
 
 class DocumentIssue(BaseModel):
     code: DocumentIssueCode
-    message: str  # member-facing, must be specific and actionable
+    message: str  
     file_id: str | None = None
     expected: str | None = None
     found: str | None = None

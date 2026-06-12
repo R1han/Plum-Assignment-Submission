@@ -33,7 +33,7 @@ def test_fixture_adapter_unreadable_strips_content():
     extracted = FixtureAdapter().extract(doc)
     assert extracted.quality == DocumentQuality.UNREADABLE
     assert extracted.extraction_confidence == 0.0
-    assert extracted.content.total is None  # nothing extractable from a blur
+    assert extracted.content.total is None 
     assert extracted.warnings
 
 
@@ -94,4 +94,4 @@ def test_consolidate_facts_min_confidence():
         content=DocumentContent(total=500),
     ))
     facts = consolidate_facts([good, partial])
-    assert facts.extraction_confidence == 0.6  # weakest document governs
+    assert facts.extraction_confidence == 0.6  

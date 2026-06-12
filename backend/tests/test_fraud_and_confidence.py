@@ -37,7 +37,6 @@ def test_tc009_same_day_claims_flagged(agent):
     trace = []
     result = agent.assess(claim, [], trace)
     assert result.flagged and result.route_manual_review
-    # The specific signal must be in the output, naming the pattern
     assert any("4 claims" in s for s in result.signals)
     assert any("CLM_0081" in s for s in result.signals)
 
@@ -62,7 +61,6 @@ def test_alteration_warnings_flagged(agent):
     assert any("alteration" in s.lower() for s in result.signals)
 
 
-# --- confidence formula ------------------------------------------------
 
 def test_clean_claim_confidence_above_085():
     report = compute_confidence(1.0, "exact", 0, 0)

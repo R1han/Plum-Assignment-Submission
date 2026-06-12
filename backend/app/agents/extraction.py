@@ -208,7 +208,7 @@ class ExtractionService:
     @property
     def vision(self) -> VisionExtractor:
         if self._vision is None:
-            self._vision = VisionExtractor()  # lazy: only when uploads arrive
+            self._vision = VisionExtractor()  
         return self._vision
 
     def extract(self, doc: DocumentInput) -> ExtractedDocument:

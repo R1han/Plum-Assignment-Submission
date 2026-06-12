@@ -72,7 +72,6 @@ class Classifier:
             return "covered", cov
         return self.procedure_fallback(text, covered, excluded)
 
-    # Hooks for the LLM tier — deterministic base returns "no match".
     def exclusion_fallback(self, text: str, policy: Policy) -> matching.MatchResult:
         return matching.MatchResult(False)
 
@@ -92,7 +91,7 @@ class AdjudicationResult(BaseModel):
     line_items: list[LineItemVerdict] = Field(default_factory=list)
     financial: FinancialBreakdown | None = None
     member_message: str = ""
-    classifier_certainty: str = "exact"  # weakest certainty used on the path
+    classifier_certainty: str = "exact" 
 
 
 class RulesEngine:
@@ -102,7 +101,6 @@ class RulesEngine:
         self.policy = policy
         self.classifier = classifier or Classifier()
 
-    # ------------------------------------------------------------------
     def adjudicate(
         self,
         claim: ClaimSubmission,
@@ -128,7 +126,6 @@ class RulesEngine:
                 result.classifier_certainty = weakest_certainty[0]
                 return result
 
-        # 7. line-item screening
         verdicts = self._screen_line_items(claim, facts, category, trace, weakest_certainty)
         excluded = [v for v in verdicts if not v.covered]
         covered = [v for v in verdicts if v.covered]
@@ -151,10 +148,6 @@ class RulesEngine:
             sum(v.amount for v in covered) if verdicts else claim.claimed_amount
         )
 
-        # 8. per-claim limit on the covered amount. The effective cap is
-        # max(global per-claim limit, category sub-limit): TC006 pays ₹8,000
-        # under DENTAL's ₹10,000 sub-limit despite the global ₹5,000 limit,
-        # while TC008's ₹7,500 consultation claim must reject against ₹5,000.
         per_claim_result = self._check_per_claim_limit(
             claim, facts, category, trace, weakest_certainty,
             covered_amount=covered_amount,
@@ -164,12 +157,10 @@ class RulesEngine:
             per_claim_result.classifier_certainty = weakest_certainty[0]
             return per_claim_result
 
-        # 9. caps (sub-limit on primary service lines, annual OPD limit)
         covered_amount, cap_notes = self._apply_caps(
             claim, facts, category, covered_amount, trace
         )
 
-        # 10. financial computation
         is_network = self.policy.is_network_hospital(
             claim.hospital_name or facts.hospital_name
         )
@@ -220,9 +211,6 @@ class RulesEngine:
             classifier_certainty=weakest_certainty[0],
         )
 
-    # ------------------------------------------------------------------
-    # Individual checks. Each returns AdjudicationResult on terminal failure,
-    # None to continue.
 
     def _check_member_eligibility(self, claim, facts, category, trace, certainty):
         member = self.policy.get_member(claim.member_id)
@@ -315,9 +303,6 @@ class RulesEngine:
         return None
 
     def _check_exclusions(self, claim, facts, category, trace, certainty):
-        # Claim-level exclusion looks at diagnosis/treatment only. Line items
-        # are screened individually later so a single excluded item produces a
-        # PARTIAL decision (TC006) rather than rejecting the whole claim.
         texts = [t for t in [facts.diagnosis, facts.treatment] if t]
         for text in texts:
             result = self.classifier.match_exclusion(text, self.policy)
@@ -449,7 +434,6 @@ class RulesEngine:
                     f"Payable ₹{amount:g} ≤ per-claim limit ₹{limit:g}.")
         return None
 
-    # ------------------------------------------------------------------
     def _screen_line_items(self, claim, facts, category: OpdCategory, trace, certainty) -> list[LineItemVerdict]:
         if not facts.line_items:
             self._trace(trace, "line_item_screening", TraceStatus.INFO,
@@ -458,9 +442,6 @@ class RulesEngine:
 
         covered_list = category.covered_procedures + category.covered_items
         excluded_list = category.excluded_procedures + category.excluded_items
-        # Category-scoped global exclusion lists (dental/vision) only apply to
-        # their own category — screening a consultation bill against them
-        # would just add noise to verdicts and confidence.
         if claim.claim_category.value == "DENTAL":
             excluded_list = excluded_list + self.policy.exclusions.dental_exclusions
         elif claim.claim_category.value == "VISION":
@@ -479,7 +460,6 @@ class RulesEngine:
         return verdicts
 
     def _screen_item(self, item: LineItem, covered_list, excluded_list, certainty) -> LineItemVerdict:
-        # Global exclusions apply to every category.
         ex = self.classifier.match_exclusion(item.description, self.policy)
         if ex.matched:
             self._bump_certainty(certainty, ex.certainty)
@@ -502,8 +482,6 @@ class RulesEngine:
                     description=item.description, amount=item.amount, covered=True,
                     reason=f"listed as covered: '{m.rule}'", matched_rule=m.rule,
                 )
-            # Unknown procedure in a list-governed category: default to covered
-            # but flag — conservative payout decisions belong to ops, not code.
             return LineItemVerdict(
                 description=item.description, amount=item.amount, covered=True,
                 reason="not on any list; covered by default (flagged)",
@@ -515,10 +493,6 @@ class RulesEngine:
 
     def _apply_caps(self, claim, facts, category: OpdCategory, covered_amount: float, trace):
         notes: list[str] = []
-        # Category sub-limit: applied to the category's primary-service lines
-        # (e.g. consultation fees), not the whole claim — TC010 approves ₹3,240
-        # on a ₹4,500 consultation claim against a ₹2,000 sub-limit, which pins
-        # this interpretation. Documented assumption in ARCHITECTURE.md.
         primary_keyword = claim.claim_category.value.replace("_", " ").lower().split()[0]
         primary_total = sum(
             li.amount for li in facts.line_items
@@ -557,7 +531,6 @@ class RulesEngine:
                         f"annual OPD limit ₹{annual_limit:g}.")
         return covered_amount, notes
 
-    # ------------------------------------------------------------------
     def _reject(self, reason: RejectionReason, message: str) -> AdjudicationResult:
         return AdjudicationResult(
             status=DecisionStatus.REJECTED,

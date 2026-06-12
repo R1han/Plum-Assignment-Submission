@@ -58,7 +58,7 @@ def resilient(component: str, impact: str):
         def wrapper(self, state):
             try:
                 return fn(self, state)
-            except Exception as e:  # noqa: BLE001 — the whole point
+            except Exception as e:  
                 return {
                     "component_failures": [ComponentFailure(
                         component=component, error=str(e), impact=impact,
@@ -82,7 +82,6 @@ class ClaimsPipeline:
         self.fraud = FraudAgent(policy)
         self.graph = self._build()
 
-    # -- nodes -----------------------------------------------------------
     def intake(self, state):
         claim = state.claim
         return {"trace": [_step(
@@ -156,7 +155,7 @@ class ClaimsPipeline:
         failures = state.component_failures
         degraded = bool(failures)
 
-        # Early exit: document issues stop the claim before any decision.
+
         if state.verification is not None and not state.verification.ok:
             outcome = ClaimOutcome(
                 claim_id=claim_id,
@@ -175,7 +174,6 @@ class ClaimsPipeline:
 
         adjudication = state.adjudication
         if adjudication is None:
-            # Adjudication itself failed — the one critical component.
             adjudication = AdjudicationResult(
                 status=DecisionStatus.MANUAL_REVIEW,
                 reasons=["Automated adjudication was unavailable; a human "
@@ -260,7 +258,6 @@ class ClaimsPipeline:
         )
         return {"outcome": outcome, "trace": [trace_step]}
 
-    # -- graph wiring ------------------------------------------------------
     def _route_after_verify(self, state) -> str:
         if state.verification is not None and not state.verification.ok:
             return "finalize"
@@ -285,7 +282,6 @@ class ClaimsPipeline:
         g.add_edge("finalize", END)
         return g.compile()
 
-    # -- public API ----------------------------------------------------
     def run(self, claim: ClaimSubmission, claim_id: str | None = None) -> ClaimOutcome:
         claim_id = claim_id or f"CLM_{uuid.uuid4().hex[:10].upper()}"
         final_state = self.graph.invoke(

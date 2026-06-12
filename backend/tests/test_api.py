@@ -15,7 +15,6 @@ from app.policy.loader import get_policy
 
 @pytest.fixture()
 def client(monkeypatch):
-    # StaticPool keeps the single in-memory DB across sessions
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False},
         poolclass=StaticPool,
@@ -67,7 +66,7 @@ def test_submit_and_retrieve_claim(client):
     assert outcome["outcome_type"] == "DECISION"
     assert outcome["decision"]["status"] == "APPROVED"
     assert outcome["decision"]["approved_amount"] == 1350
-    assert outcome["trace"]  # trace persisted in the response
+    assert outcome["trace"] 
 
     claim_id = outcome["claim_id"]
     listing = client.get("/api/claims").json()

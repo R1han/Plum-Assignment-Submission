@@ -16,8 +16,6 @@ class Settings(BaseSettings):
     policy_file: Path = BASE_DIR / "data" / "policy_terms.json"
     database_url: str = f"sqlite:///{BASE_DIR / 'claims.db'}"
 
-    # When true, LLM classifiers are skipped entirely and only the
-    # deterministic fallbacks run (used by the eval harness / CI).
     offline_mode: bool = False
 
     cors_origins: str = "http://localhost:3000"
