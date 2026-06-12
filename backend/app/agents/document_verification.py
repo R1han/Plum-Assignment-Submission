@@ -33,6 +33,12 @@ from app.models.policy import Policy
 
 _TITLES = {"mr", "mrs", "ms", "dr", "smt", "shri", "master", "baby"}
 
+MIN_USABLE_CONFIDENCE = 0.6
+
+_AMOUNT_WARNING_FRAGMENTS = (
+    "amount", "total", "subtotal", "price", "figure", "₹", "rs.",
+)
+
 
 def _name_tokens(name: str) -> frozenset[str]:
     tokens = re.sub(r"[^a-z\s]", " ", name.lower()).split()
@@ -128,36 +134,65 @@ class DocumentVerificationAgent:
         return issues
 
     def _check_readability(self, claim, docs, trace) -> list[DocumentIssue]:
-        requirement = self.policy.get_document_requirement(claim.claim_category.value)
-        required_types = set(requirement.required) if requirement else set()
         issues = []
         for doc in docs:
-            if doc.quality == DocumentQuality.UNREADABLE:
-                relevant = doc.doc_type.value in required_types
-                label = _human(doc.doc_type.value)
-                message = (
-                    f"The {label} you uploaded "
-                    f"({doc.file_name or doc.file_id}) could not be read — the "
-                    f"image is too blurry or unclear. Please take a clear, "
-                    f"well-lit photo of the {label} and re-upload just that "
-                    f"document. The rest of your claim is fine and will be "
-                    f"processed once we can read it."
-                )
-                issues.append(DocumentIssue(
-                    code=DocumentIssueCode.UNREADABLE_DOCUMENT,
-                    message=message,
-                    file_id=doc.file_id,
-                    expected=f"readable {label}",
-                    found="unreadable image",
-                ))
-                self._trace(trace, "document_readability", TraceStatus.FAIL,
-                            f"Document {doc.file_id} ({doc.doc_type.value}) is "
-                            f"unreadable{' and is a required document' if relevant else ''}.",
-                            {"file_id": doc.file_id, "doc_type": doc.doc_type.value})
+            reason = self._unusable_reason(doc)
+            if reason is None:
+                continue
+            label = _human(doc.doc_type.value)
+            message = (
+                f"The {label} you uploaded "
+                f"({doc.file_name or doc.file_id}) could not be read reliably "
+                f"— {reason}. Please take a clear, well-lit photo of the "
+                f"{label} and re-upload just that document. The rest of your "
+                f"claim is fine and will be processed once we can read it."
+            )
+            issues.append(DocumentIssue(
+                code=DocumentIssueCode.UNREADABLE_DOCUMENT,
+                message=message,
+                file_id=doc.file_id,
+                expected=f"readable {label}",
+                found=reason,
+            ))
+            self._trace(trace, "document_readability", TraceStatus.FAIL,
+                        f"Document {doc.file_id} ({doc.doc_type.value}) is not "
+                        f"usable: {reason}.",
+                        {"file_id": doc.file_id, "doc_type": doc.doc_type.value,
+                         "quality": doc.quality.value,
+                         "extraction_confidence": doc.extraction_confidence,
+                         "warnings": doc.warnings})
         if not issues:
             self._trace(trace, "document_readability", TraceStatus.PASS,
-                        "All documents are readable.")
+                        "All documents are readable and their material fields "
+                        "were extracted with usable confidence.")
         return issues
+
+    @staticmethod
+    def _unusable_reason(doc) -> str | None:
+        """A document is unusable if it is unreadable outright, if extraction
+        confidence is below the usability floor, or — for bills — if the
+        amounts that would back the payout are themselves unreliable. The
+        vision model's PARTIAL label is not trusted on its own (a 'partially
+        readable' bill whose totals are guesses must not drive a payout)."""
+        if doc.quality == DocumentQuality.UNREADABLE:
+            return "the image is too blurry or unclear"
+        if doc.extraction_confidence < MIN_USABLE_CONFIDENCE:
+            return (f"the image quality is too low to extract it with "
+                    f"confidence (extraction confidence "
+                    f"{doc.extraction_confidence:g})")
+        if doc.source == "vision" and doc.doc_type.value.endswith("BILL"):
+            c = doc.content
+            if c.total is None and not c.line_items:
+                return "no billed amounts could be read from it"
+            if doc.quality == DocumentQuality.PARTIAL and any(
+                frag in w.lower()
+                for w in doc.warnings
+                for frag in _AMOUNT_WARNING_FRAGMENTS
+            ):
+                return ("the billed amounts are blurry or unclear, and a "
+                        "claim cannot be paid against amounts we cannot "
+                        "verify")
+        return None
 
     def _check_patient_consistency(self, claim, docs, trace):
         named = [

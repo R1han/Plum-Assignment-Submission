@@ -5,7 +5,13 @@ from datetime import date
 import pytest
 
 from app.agents.document_verification import DocumentVerificationAgent, names_match
-from app.models.claim import ClaimCategory, ClaimSubmission, DocumentContent, DocumentInput
+from app.models.claim import (
+    ClaimCategory,
+    ClaimSubmission,
+    DocumentContent,
+    DocumentInput,
+    LineItem,
+)
 from app.models.decision import DocumentIssueCode
 from app.models.extraction import ExtractedDocument
 from app.policy.loader import load_policy
@@ -132,3 +138,76 @@ def test_names_match_tolerance():
     assert names_match("Rajesh", "Rajesh Kumar") 
     assert not names_match("Rajesh Kumar", "Arjun Mehta")
     assert names_match(None, "Rajesh Kumar")  
+
+
+def edoc(file_id, doc_type, *, quality="GOOD", confidence=1.0, warnings=None,
+         content=None):
+    return ExtractedDocument(
+        file_id=file_id, doc_type=doc_type, quality=quality,
+        extraction_confidence=confidence, warnings=warnings or [],
+        content=content or DocumentContent(), source="vision",
+    )
+
+
+def test_low_confidence_partial_bill_blocked(agent):
+    """A vision-extracted bill labeled PARTIAL but with low extraction
+    confidence must be treated as unreadable (live TC002 equivalent)."""
+    claim = make_claim(member_id="EMP004", claim_category=ClaimCategory.PHARMACY,
+                       treatment_date=date(2024, 10, 25), claimed_amount=800)
+    docs = [
+        edoc("UP001", "PRESCRIPTION", content=DocumentContent(patient_name="Sneha Reddy")),
+        edoc("UP002", "PHARMACY_BILL", quality="PARTIAL", confidence=0.55,
+             warnings=["Exact amounts for line items are blurry"],
+             content=DocumentContent(total=800)),
+    ]
+    result = agent.verify(claim, docs, [])
+    assert not result.ok
+    issue = result.issues[0]
+    assert issue.code == DocumentIssueCode.UNREADABLE_DOCUMENT
+    assert issue.file_id == "UP002"
+    assert "re-upload" in issue.message.lower()
+
+
+def test_partial_bill_with_unreliable_amounts_blocked(agent):
+    """Even at decent confidence, a PARTIAL bill whose warnings flag the
+    amounts cannot back a payout."""
+    claim = make_claim(member_id="EMP004", claim_category=ClaimCategory.PHARMACY,
+                       treatment_date=date(2024, 10, 25), claimed_amount=800)
+    docs = [
+        edoc("UP001", "PRESCRIPTION", content=DocumentContent(patient_name="Sneha Reddy")),
+        edoc("UP002", "PHARMACY_BILL", quality="PARTIAL", confidence=0.75,
+             warnings=["Subtotal and total amounts are partially illegible"],
+             content=DocumentContent(total=800)),
+    ]
+    result = agent.verify(claim, docs, [])
+    assert not result.ok
+    assert result.issues[0].code == DocumentIssueCode.UNREADABLE_DOCUMENT
+
+
+def test_bill_with_no_amounts_blocked(agent):
+    claim = make_claim()
+    docs = [
+        edoc("UP001", "PRESCRIPTION", content=DocumentContent(patient_name="Rajesh Kumar")),
+        edoc("UP002", "HOSPITAL_BILL",
+             content=DocumentContent(patient_name="Rajesh Kumar")),  # no total/items
+    ]
+    result = agent.verify(claim, docs, [])
+    assert not result.ok
+    assert result.issues[0].code == DocumentIssueCode.UNREADABLE_DOCUMENT
+
+
+def test_partial_bill_with_reliable_amounts_passes(agent):
+    """PARTIAL is fine when only secondary fields are obscured — the amounts
+    are intact, so the claim can proceed."""
+    claim = make_claim()
+    docs = [
+        edoc("UP001", "PRESCRIPTION", content=DocumentContent(patient_name="Rajesh Kumar")),
+        edoc("UP002", "HOSPITAL_BILL", quality="PARTIAL", confidence=0.8,
+             warnings=["GSTIN partially obscured by stamp"],
+             content=DocumentContent(
+                 patient_name="Rajesh Kumar", total=1500,
+                 line_items=[LineItem(description="Consultation Fee", amount=1500)],
+             )),
+    ]
+    result = agent.verify(claim, docs, [])
+    assert result.ok

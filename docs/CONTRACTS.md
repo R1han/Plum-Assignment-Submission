@@ -35,7 +35,8 @@ shared trace.
 |---|---|
 | **Input** | `ClaimSubmission`, `list[ExtractedDocument]`, trace list. |
 | **Output** | `VerificationResult` — `ok: bool`, `issues: list[DocumentIssue]` (`code` ∈ MISSING_DOCUMENT \| WRONG_DOCUMENT_TYPE \| UNREADABLE_DOCUMENT \| PATIENT_MISMATCH, member-facing `message`, `file_id`, `expected`, `found`), `patient_name` (consensus across docs). |
-| **Behavior** | Checks in order: required types for the category (from policy `document_requirements`), readability, cross-document patient consistency, patient-on-roster (member or covered dependent). Name comparison is title-stripped token-set match. `ok=False` ⇒ pipeline stops before adjudication. |
+| **Behavior** | Checks in order: required types for the category (from policy `document_requirements`), usability, cross-document patient consistency, patient-on-roster (member or covered dependent). Name comparison is title-stripped token-set match. `ok=False` ⇒ pipeline stops before adjudication. |
+| **Usability gate** | A document is blocked as UNREADABLE_DOCUMENT when any of: `quality == UNREADABLE`; `extraction_confidence < 0.6` (the model's PARTIAL label is not trusted on its own); or — vision-extracted bills only — no amounts could be read, or quality is PARTIAL with warnings naming amounts/totals. Rationale: a payout cannot be backed by amounts the extractor itself flagged as unreliable. Fixture documents are exempt from the bill-amount rules (they assert their own ground truth). |
 | **Errors** | Never raises on claim data. Missing requirements config → ERROR trace step, no issues. |
 
 ## 4. Rules Engine — `app/engine/rules.py`
@@ -97,7 +98,7 @@ shared trace.
 | Endpoint | Input | Output | Errors |
 |---|---|---|---|
 | `POST /api/claims` | `ClaimSubmission` JSON | `ClaimOutcome` | 422 invalid payload |
-| `POST /api/claims/upload` | multipart form: member_id, policy_id, claim_category, treatment_date, claimed_amount, hospital_name?, files[] | `ClaimOutcome` | 413 file >10MB, 422 invalid fields |
+| `POST /api/claims/upload` | multipart form: member_id, policy_id, claim_category, treatment_date, claimed_amount, hospital_name?, files[] | `ClaimOutcome` | 413 file >5MB (Claude API image limit), 422 invalid fields |
 | `GET /api/claims` | — | claim summaries (newest first) | — |
 | `GET /api/claims/{id}` | claim id | `{submission, outcome}` with full trace | 404 unknown id |
 | `GET /api/policy` | — | policy summary for the UI | — |

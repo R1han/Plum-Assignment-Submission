@@ -41,7 +41,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F001 | PASS | F001: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F002 | PASS | F002: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | FAIL | Missing required document(s): HOSPITAL_BILL. Uploaded: 2 prescriptions. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | finalize | outcome | INFO | Stopped before adjudication: 1 document issue(s) returned to the member. No decision made. |
 
 ---
@@ -50,13 +50,13 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 
 **No decision — stopped early with document issues:**
 
-- **UNREADABLE_DOCUMENT** (F004): The pharmacy bill you uploaded (blurry_bill.jpg) could not be read — the image is too blurry or unclear. Please take a clear, well-lit photo of the pharmacy bill and re-upload just that document. The rest of your claim is fine and will be processed once we can read it.
+- **UNREADABLE_DOCUMENT** (F004): The pharmacy bill you uploaded (blurry_bill.jpg) could not be read reliably — the image is too blurry or unclear. Please take a clear, well-lit photo of the pharmacy bill and re-upload just that document. The rest of your claim is fine and will be processed once we can read it.
 
 **Expectation checks:**
 
 - ✅ stops before decision — outcome_type=DOCUMENT_ISSUE, decision=None
 - ✅ identifies the unreadable pharmacy bill — issues=[('UNREADABLE_DOCUMENT', 'F004')]
-- ✅ asks for re-upload, not rejection — the pharmacy bill you uploaded (blurry_bill.jpg) could not be read — the image is too blurry or unclear. please take a clear, well-lit photo of the pharmacy bill and re-upload just that document. the 
+- ✅ asks for re-upload, not rejection — the pharmacy bill you uploaded (blurry_bill.jpg) could not be read reliably — the image is too blurry or unclear. please take a clear, well-lit photo of the pharmacy bill and re-upload just that docum
 
 **Full trace:**
 
@@ -66,7 +66,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F003 | PASS | F003: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F004 | PASS | F004: PHARMACY_BILL (UNREADABLE, source=fixture, confidence=0); warnings: document unreadable; no fields extracted |
 | 4 | document_verification | required_documents | PASS | All required documents present for PHARMACY: PRESCRIPTION, PHARMACY_BILL. |
-| 5 | document_verification | document_readability | FAIL | Document F004 (PHARMACY_BILL) is unreadable and is a required document. |
+| 5 | document_verification | document_readability | FAIL | Document F004 (PHARMACY_BILL) is not usable: the image is too blurry or unclear. |
 | 6 | finalize | outcome | INFO | Stopped before adjudication: 1 document issue(s) returned to the member. No decision made. |
 
 ---
@@ -90,7 +90,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F005 | PASS | F005: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F006 | PASS | F006: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_consistency | FAIL | Patient mismatch: 'Rajesh Kumar' on F005 vs 'Arjun Mehta' on F006. |
 | 7 | finalize | outcome | INFO | Stopped before adjudication: 1 document issue(s) returned to the member. No decision made. |
 
@@ -122,7 +122,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F007 | PASS | F007: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F008 | PASS | F008: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_on_roster | PASS | Patient 'Rajesh Kumar' matches the membership of EMP001. |
 | 7 | document_verification | patient_consistency | PASS | All documents belong to the same patient. Patient: Rajesh Kumar. |
 | 8 | rules_engine | member_exists | PASS | Member EMP001 (Rajesh Kumar) found on roster. |
@@ -169,7 +169,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F009 | PASS | F009: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F010 | PASS | F010: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_on_roster | PASS | Patient 'Vikram Joshi' matches the membership of EMP005. |
 | 7 | document_verification | patient_consistency | PASS | All documents belong to the same patient. Patient: Vikram Joshi. |
 | 8 | rules_engine | member_exists | PASS | Member EMP005 (Vikram Joshi) found on roster. |
@@ -213,7 +213,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 1 | intake | claim_received | INFO | Claim TC006 received: member EMP002, category DENTAL, amount ₹12000, 1 document(s), treatment date 2024-10-15. |
 | 2 | extraction | extract_F011 | PASS | F011: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 3 | document_verification | required_documents | PASS | All required documents present for DENTAL: HOSPITAL_BILL. |
-| 4 | document_verification | document_readability | PASS | All documents are readable. |
+| 4 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 5 | document_verification | patient_on_roster | PASS | Patient 'Priya Singh' matches the membership of EMP002. |
 | 6 | document_verification | patient_consistency | PASS | All documents belong to the same patient. Patient: Priya Singh. |
 | 7 | rules_engine | member_exists | PASS | Member EMP002 (Priya Singh) found on roster. |
@@ -261,7 +261,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 3 | extraction | extract_F013 | PASS | F013: LAB_REPORT (GOOD, source=fixture, confidence=1) |
 | 4 | extraction | extract_F014 | PASS | F014: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 5 | document_verification | required_documents | PASS | All required documents present for DIAGNOSTIC: PRESCRIPTION, LAB_REPORT, HOSPITAL_BILL. |
-| 6 | document_verification | document_readability | PASS | All documents are readable. |
+| 6 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 7 | document_verification | patient_consistency | PASS | All documents belong to the same patient. |
 | 8 | rules_engine | member_exists | PASS | Member EMP007 (Suresh Patil) found on roster. |
 | 9 | rules_engine | policy_active | PASS | Treatment date 2024-11-02 within policy period. |
@@ -304,7 +304,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F015 | PASS | F015: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F016 | PASS | F016: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_consistency | PASS | All documents belong to the same patient. |
 | 7 | rules_engine | member_exists | PASS | Member EMP003 (Amit Verma) found on roster. |
 | 8 | rules_engine | policy_active | PASS | Treatment date 2024-10-20 within policy period. |
@@ -347,7 +347,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F017 | PASS | F017: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F018 | PASS | F018: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_consistency | PASS | All documents belong to the same patient. |
 | 7 | rules_engine | member_exists | PASS | Member EMP008 (Ravi Menon) found on roster. |
 | 8 | rules_engine | policy_active | PASS | Treatment date 2024-10-30 within policy period. |
@@ -395,7 +395,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F019 | PASS | F019: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F020 | PASS | F020: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_on_roster | PASS | Patient 'Deepak Shah' matches the membership of EMP010. |
 | 7 | document_verification | patient_consistency | PASS | All documents belong to the same patient. Patient: Deepak Shah. |
 | 8 | rules_engine | member_exists | PASS | Member EMP010 (Deepak Shah) found on roster. |
@@ -447,7 +447,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F021 | PASS | F021: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F022 | PASS | F022: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for ALTERNATIVE_MEDICINE: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_consistency | PASS | All documents belong to the same patient. |
 | 7 | rules_engine | member_exists | PASS | Member EMP006 (Kavita Nair) found on roster. |
 | 8 | rules_engine | policy_active | PASS | Treatment date 2024-10-28 within policy period. |
@@ -493,7 +493,7 @@ Pipeline configuration: deterministic classifier tier only (no LLM calls), so th
 | 2 | extraction | extract_F023 | PASS | F023: PRESCRIPTION (GOOD, source=fixture, confidence=1) |
 | 3 | extraction | extract_F024 | PASS | F024: HOSPITAL_BILL (GOOD, source=fixture, confidence=1) |
 | 4 | document_verification | required_documents | PASS | All required documents present for CONSULTATION: PRESCRIPTION, HOSPITAL_BILL. |
-| 5 | document_verification | document_readability | PASS | All documents are readable. |
+| 5 | document_verification | document_readability | PASS | All documents are readable and their material fields were extracted with usable confidence. |
 | 6 | document_verification | patient_consistency | PASS | All documents belong to the same patient. |
 | 7 | rules_engine | member_exists | PASS | Member EMP009 (Anita Desai) found on roster. |
 | 8 | rules_engine | policy_active | PASS | Treatment date 2024-10-18 within policy period. |

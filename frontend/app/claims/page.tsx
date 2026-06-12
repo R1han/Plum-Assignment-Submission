@@ -15,8 +15,10 @@ export default function ClaimsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Decisions</h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+        Decisions
+      </h1>
+      <p className="mt-1.5 text-sm text-slate-500">
         Every processed claim with its decision and full trace.
       </p>
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -26,9 +28,9 @@ export default function ClaimsPage() {
         </p>
       )}
       {claims && claims.length > 0 && (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-slate-50/80 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Claim</th>
                 <th className="px-4 py-3">Member</th>
@@ -41,9 +43,9 @@ export default function ClaimsPage() {
             </thead>
             <tbody>
               {claims.map((c) => (
-                <tr key={c.claim_id} className="border-t border-slate-100 hover:bg-violet-50/40">
+                <tr key={c.claim_id} className="border-t border-slate-100 transition hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono text-xs">
-                    <Link href={`/claims/${c.claim_id}`} className="text-violet-700 hover:underline">
+                    <Link href={`/claims/${c.claim_id}`} className="font-medium text-violet-600 hover:text-violet-800 hover:underline">
                       {c.claim_id}
                     </Link>
                   </td>

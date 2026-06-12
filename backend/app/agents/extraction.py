@@ -32,8 +32,21 @@ class ExtractionError(Exception):
     """Raised when a document cannot be extracted at all."""
 
 
+class _VisionLineItem(BaseModel):
+    """A bill line item as extracted by the vision model."""
+
+    description: str
+    amount: float
+
+
 class _VisionExtractionSchema(BaseModel):
-    """Structured output the vision model must return for each document."""
+    """Structured output the vision model must return for each document.
+
+    Every field is deliberately REQUIRED (nullable/empty where unknown):
+    optional fields with defaults inflate the structured-outputs grammar and
+    trip the API's "Schema is too complex" limit, while required-but-nullable
+    fields do not.
+    """
 
     doc_type: DocumentType = Field(
         description="The document type. UNKNOWN only if truly unidentifiable."
@@ -43,29 +56,33 @@ class _VisionExtractionSchema(BaseModel):
                     "obscured (stamps, folds, blur), UNREADABLE if no reliable "
                     "fields can be extracted."
     )
-    patient_name: str | None = None
-    doctor_name: str | None = None
+    patient_name: str | None
+    doctor_name: str | None
     doctor_registration: str | None = Field(
-        default=None,
         description="Indian medical registration, e.g. KA/45678/2015 or "
-                    "AYUR/KL/2345/2019.",
+                    "AYUR/KL/2345/2019. Null if absent.",
     )
-    hospital_name: str | None = None
-    date: str | None = Field(default=None, description="ISO format if possible")
-    diagnosis: str | None = None
-    treatment: str | None = None
-    medicines: list[str] = Field(default_factory=list)
-    tests_ordered: list[str] = Field(default_factory=list)
-    line_items: list[LineItem] = Field(default_factory=list)
-    total: float | None = None
+    hospital_name: str | None
+    date: str | None = Field(description="ISO format if possible, null if absent")
+    diagnosis: str | None
+    treatment: str | None
+    medicines: list[str] = Field(
+        description="Medicines mentioned; empty list if none."
+    )
+    tests_ordered: list[str] = Field(
+        description="Tests ordered; empty list if none."
+    )
+    line_items: list[_VisionLineItem] = Field(
+        description="For bills: every line item with its amount. Empty otherwise."
+    )
+    total: float | None
     confidence: float = Field(
         ge=0, le=1,
         description="Your confidence in the extraction overall.",
     )
     warnings: list[str] = Field(
-        default_factory=list,
         description="Anything partially illegible, stamped over, corrected, "
-                    "or ambiguous — name the specific field.",
+                    "or ambiguous — name the specific field. Empty if none.",
     )
 
 
@@ -78,6 +95,12 @@ Diabetes Mellitus, Rx = prescription).
 Rules:
 - Classify the document type and its readability honestly. If you cannot read
   a field, leave it null and add a warning naming the field — do not guess.
+- Readability is judged by the fields that matter for a claim. For BILLS the
+  material fields are the line-item amounts and the total: if you cannot read
+  those reliably, classify the document as UNREADABLE (not PARTIAL), even if
+  the header or names are legible. PARTIAL means the material fields ARE
+  reliable and only secondary fields are obscured.
+- Never report amounts you are guessing at — omit them and add a warning.
 - Expand medical shorthand in the diagnosis field.
 - For bills, extract every line item with its amount, and the total.
 - Amounts are INR. Strip currency symbols and thousands separators.
@@ -127,7 +150,9 @@ class VisionExtractor:
                 "ANTHROPIC_API_KEY is not configured; cannot extract uploaded "
                 "documents. Structured (fixture) submissions still work."
             )
-        self.client = client or Anthropic(api_key=settings.anthropic_api_key)
+        self.client = client or Anthropic(
+            api_key=settings.anthropic_api_key, timeout=120.0, max_retries=1,
+        )
         self.model = model or settings.extraction_model
 
     def extract(self, doc: DocumentInput) -> ExtractedDocument:
@@ -181,7 +206,10 @@ class VisionExtractor:
             treatment=parsed.treatment,
             medicines=parsed.medicines,
             tests_ordered=parsed.tests_ordered,
-            line_items=parsed.line_items,
+            line_items=[
+                LineItem(description=li.description, amount=li.amount)
+                for li in parsed.line_items
+            ],
             total=parsed.total,
         )
         return ExtractedDocument(

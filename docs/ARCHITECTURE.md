@@ -41,7 +41,7 @@ Health insurance claims processing system for the Plum AI Engineer assignment.
 |---|---|---|
 | Policy loader | `app/policy/loader.py` | Parse + validate `policy_terms.json` into typed models. **No policy value is hardcoded anywhere else.** |
 | Extraction service | `app/agents/extraction.py` | One interface, two adapters: `FixtureAdapter` (structured test input) and `VisionExtractor` (Claude Sonnet 4.6 on uploaded images/PDFs). |
-| Document verification | `app/agents/document_verification.py` | The early gate: required-document check, readability check, cross-document patient consistency, roster membership. Stops the pipeline with member-facing, actionable messages. |
+| Document verification | `app/agents/document_verification.py` | The early gate: required-document check, usability gate (UNREADABLE quality, extraction-confidence floor, bill amount integrity), cross-document patient consistency, roster membership. Stops the pipeline with member-facing, actionable messages. |
 | Rules engine | `app/engine/rules.py` | Deterministic adjudication: eligibility, waiting periods, exclusions, pre-auth, limits, line-item screening, financial math. |
 | Classifier (2-tier) | `app/engine/matching.py` + `app/agents/classifiers.py` | Tier 1: deterministic keyword/synonym matching derived from the policy file. Tier 2: Claude Opus 4.8 fallback for fuzzy text tier 1 can't resolve. |
 | Fraud detection | `app/engine/fraud.py` | Same-day/monthly frequency, high-value threshold, document-alteration markers. Routes to MANUAL_REVIEW — never auto-rejects. |
@@ -124,6 +124,19 @@ A fraud signal on an otherwise-approvable claim produces MANUAL_REVIEW with
 the specific signals in the output (TC009). False-positive fraud rejection is
 a member-trust disaster; a human gate is the correct cost.
 
+### 7. The extractor's self-reported quality label is not trusted
+
+Found live: the vision model classified a deliberately blurred pharmacy bill
+as PARTIAL (confidence 0.55) with warnings that the "amounts may be
+inaccurate" — and the claim was briefly approvable against amounts the
+extractor itself doubted. The fix is a deterministic usability gate in
+verification, independent of the model's own quality judgment: documents
+below an extraction-confidence floor (0.6) are blocked, and vision-extracted
+*bills* are additionally blocked when their amounts are missing or flagged
+unreliable — readability for a bill is defined by the financially material
+fields, not the header. The extraction prompt teaches the same definition,
+but the code-level gate is what guarantees it.
+
 ## Documented assumptions (ambiguities in the spec)
 
 1. **Category sub-limit vs per-claim limit.** TC006 approves ₹8,000 on a
@@ -136,8 +149,11 @@ a member-trust disaster; a human gate is the correct cost.
    on a ₹4,500 consultation claim, so the sub-limit cannot cap whole claims.
 2. **Submission date.** Test fixtures carry 2024 treatment dates with no
    submission date; evaluating the 30-day deadline against the wall clock
-   would reject every fixture. `submission_date` defaults to
-   `treatment_date` when absent; real uploads set it to today.
+   would reject every fixture — and the demo policy itself ends 2025-03-31,
+   so wall-clock-dated uploads could never be covered either.
+   `submission_date` therefore defaults to `treatment_date` everywhere in
+   this sandbox (the deadline rule stays implemented and unit-tested);
+   production would stamp today's date at the API boundary.
 3. **Exclusions precede waiting periods.** Morbid obesity (TC012) matches
    both an exclusion and a waiting-period condition; exclusion wins because a
    permanent exclusion dominates a temporary wait.

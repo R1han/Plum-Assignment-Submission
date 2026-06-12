@@ -21,6 +21,7 @@ from datetime import date
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -122,8 +123,12 @@ async def submit_claim_upload(
     documents = []
     for i, f in enumerate(files):
         data = await f.read()
-        if len(data) > 10 * 1024 * 1024:
-            raise HTTPException(413, f"{f.filename} exceeds the 10MB limit.")
+        if len(data) > 5 * 1024 * 1024:
+            raise HTTPException(
+                413,
+                f"{f.filename} exceeds the 5MB limit — please resize or "
+                "compress the image and try again.",
+            )
         documents.append(DocumentInput(
             file_id=f"UP{i + 1:03d}",
             file_name=f.filename,
@@ -142,7 +147,7 @@ async def submit_claim_upload(
         )
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
-    return _process(claim, db)
+    return await run_in_threadpool(_process, claim, db)
 
 
 @app.get("/api/claims")

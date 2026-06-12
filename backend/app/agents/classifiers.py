@@ -42,7 +42,9 @@ class LLMClassifier(Classifier):
         self.enabled = bool(settings.anthropic_api_key) and not settings.offline_mode
         self.model = settings.adjudication_model
         self.client = client or (
-            Anthropic(api_key=settings.anthropic_api_key) if self.enabled else None
+            Anthropic(api_key=settings.anthropic_api_key,
+                      timeout=60.0, max_retries=1)
+            if self.enabled else None
         )
         self.failures: list[str] = []
         self._cache: dict[tuple, MatchResult | tuple] = {}

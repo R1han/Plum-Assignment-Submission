@@ -30,10 +30,15 @@ export default function ClaimDetailPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link href="/claims" className="text-sm text-violet-600 hover:underline">
+          <Link
+            href="/claims"
+            className="text-sm font-medium text-violet-600 hover:text-violet-800 hover:underline"
+          >
             ← All decisions
           </Link>
-          <h1 className="mt-1 font-mono text-xl font-semibold">{outcome.claim_id}</h1>
+          <h1 className="mt-1 font-mono text-xl font-semibold tracking-tight text-slate-900">
+            {outcome.claim_id}
+          </h1>
         </div>
         <StatusBadge
           status={d ? d.status : "DOCUMENTS_NEEDED"}
@@ -43,7 +48,7 @@ export default function ClaimDetailPage({
 
       {/* Document issues (stopped early) */}
       {outcome.outcome_type === "DOCUMENT_ISSUE" && (
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <h2 className="font-semibold text-amber-900">
             Action needed — your claim was not processed
           </h2>
@@ -63,13 +68,13 @@ export default function ClaimDetailPage({
       {/* Decision summary */}
       {d && (
         <section className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-400">Approved amount</p>
             <p className="mt-1 text-2xl font-semibold">
               ₹{d.approved_amount.toLocaleString("en-IN")}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-400">Confidence</p>
             <p className="mt-1 text-2xl font-semibold">{d.confidence_score.toFixed(2)}</p>
             {d.manual_review_recommended && (
@@ -78,7 +83,7 @@ export default function ClaimDetailPage({
               </p>
             )}
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-xs font-medium uppercase text-slate-400">Member message</p>
             <p className="mt-1 text-sm text-slate-700">{d.member_message}</p>
           </div>
@@ -87,7 +92,7 @@ export default function ClaimDetailPage({
 
       {/* Component failures */}
       {outcome.component_failures.length > 0 && (
-        <section className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+        <section className="rounded-2xl border border-orange-200 bg-orange-50 p-5">
           <h2 className="text-sm font-semibold text-orange-900">
             Degraded processing — component failures
           </h2>
@@ -103,7 +108,7 @@ export default function ClaimDetailPage({
 
       {/* Financial breakdown */}
       {d?.financial && (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold">Financial breakdown</h2>
           <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-5">
             <Item label="Claimed" value={d.financial.claimed_amount} />
@@ -130,7 +135,7 @@ export default function ClaimDetailPage({
 
       {/* Line items */}
       {d && d.line_items.length > 0 && (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold">Line items</h2>
           <table className="mt-3 w-full text-sm">
             <thead className="text-left text-xs uppercase text-slate-400">
@@ -167,7 +172,7 @@ export default function ClaimDetailPage({
 
       {/* Fraud signals */}
       {d && d.fraud_signals.length > 0 && (
-        <section className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
           <h2 className="text-sm font-semibold text-blue-900">Fraud signals</h2>
           <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-blue-800">
             {d.fraud_signals.map((s, i) => (
@@ -179,7 +184,7 @@ export default function ClaimDetailPage({
 
       {/* Reasons */}
       {d && d.reasons.length > 0 && (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold">Decision reasons</h2>
           <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">
             {d.reasons.map((r, i) => (
@@ -190,7 +195,7 @@ export default function ClaimDetailPage({
       )}
 
       {/* Full trace */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="font-semibold">
           Processing trace
           <span className="ml-2 text-xs font-normal text-slate-400">
