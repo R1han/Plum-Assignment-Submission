@@ -102,6 +102,9 @@ Rules:
   reliable and only secondary fields are obscured.
 - Never report amounts you are guessing at — omit them and add a warning.
 - Expand medical shorthand in the diagnosis field.
+- `treatment` is the procedure or therapy performed or advised (e.g.
+  "physiotherapy", "root canal", "MRI of knee"). Do NOT put the prescribed
+  medication list in `treatment` — medicines belong only in `medicines`.
 - For bills, extract every line item with its amount, and the total.
 - Amounts are INR. Strip currency symbols and thousands separators.
 - Patient and doctor names exactly as printed (keep titles like Dr.).

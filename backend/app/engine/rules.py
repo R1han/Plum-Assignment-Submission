@@ -11,7 +11,8 @@ Check order (first terminal failure wins; later checks are traced SKIPPED):
   1. member eligibility (exists, policy active, treatment after join)
   2. submission rules (minimum amount, deadline)
   3. category coverage
-  4. exclusions (diagnosis/treatment level)        -> REJECTED
+  4. exclusions (diagnosis/treatment level; prescribed
+     medicines are excluded from this match)         -> REJECTED
   5. waiting periods (initial + condition-specific) -> REJECTED
   6. pre-authorization                              -> REJECTED
   7. per-claim limit                                -> REJECTED
@@ -25,6 +26,7 @@ condition is permanently out of cover, which dominates a temporary wait.
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 
 from app.engine import matching
@@ -41,6 +43,41 @@ from app.models.decision import (
 from app.models.extraction import ClaimFacts
 from app.models.policy import OpdCategory, Policy
 from pydantic import BaseModel, Field
+
+
+_DOSAGE_WORDS = frozenset({
+    "tab", "tabs", "tablet", "tablets", "cap", "caps", "capsule", "capsules",
+    "syrup", "syp", "inj", "injection", "drops", "days", "day", "week", "weeks",
+    "month", "months", "morning", "night", "once", "twice", "thrice", "daily",
+    "before", "after", "food", "stat", "course",
+})
+
+
+def _strip_medicines(treatment: str | None, medicines: list[str]) -> str | None:
+    """Remove prescribed-medicine references from a free-text treatment string.
+
+    The vision extractor occasionally puts the medication list in `treatment`;
+    that text must not drive a claim-level exclusion (a prescribed vitamin is
+    not an excluded "health supplement"). Returns the remaining clinical
+    treatment text, or None if only dosage scaffolding is left.
+    """
+    if not treatment:
+        return None
+    if not medicines:
+        return treatment
+    cleaned = treatment
+    for med in medicines:
+        if not med:
+            continue
+        head = re.split(r"\d", med, maxsplit=1)[0].strip()
+        for needle in (med.strip(), head):
+            if len(needle) >= 3:
+                cleaned = re.sub(re.escape(needle), " ", cleaned, flags=re.IGNORECASE)
+    leftover = [w for w in re.findall(r"[A-Za-z]{3,}", cleaned)
+                if w.lower() not in _DOSAGE_WORDS]
+    if not leftover:
+        return None
+    return cleaned.strip(" ;,.-/") or None
 
 
 class Classifier:
@@ -303,7 +340,8 @@ class RulesEngine:
         return None
 
     def _check_exclusions(self, claim, facts, category, trace, certainty):
-        texts = [t for t in [facts.diagnosis, facts.treatment] if t]
+        treatment = _strip_medicines(facts.treatment, facts.medicines)
+        texts = [t for t in [facts.diagnosis, treatment] if t]
         for text in texts:
             result = self.classifier.match_exclusion(text, self.policy)
             if result.matched:

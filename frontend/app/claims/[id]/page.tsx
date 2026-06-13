@@ -65,6 +65,50 @@ export default function ClaimDetailPage({
         </section>
       )}
 
+      {/* Rejected / manual-review callout — surface the reason prominently */}
+      {d && (d.status === "REJECTED" || d.status === "MANUAL_REVIEW") && (
+        <section
+          className={`rounded-2xl border p-5 ${
+            d.status === "REJECTED"
+              ? "border-red-200 bg-red-50"
+              : "border-orange-200 bg-orange-50"
+          }`}
+        >
+          <h2
+            className={`font-semibold ${
+              d.status === "REJECTED" ? "text-red-900" : "text-orange-900"
+            }`}
+          >
+            {d.status === "REJECTED"
+              ? "Claim not approved"
+              : "Sent for manual review"}
+          </h2>
+          <p
+            className={`mt-2 text-sm ${
+              d.status === "REJECTED" ? "text-red-800" : "text-orange-800"
+            }`}
+          >
+            {d.member_message}
+          </p>
+          {d.rejection_reasons.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {d.rejection_reasons.map((r, i) => (
+                <span
+                  key={i}
+                  className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
+                    d.status === "REJECTED"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-orange-100 text-orange-800"
+                  }`}
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Decision summary */}
       {d && (
         <section className="grid gap-4 sm:grid-cols-3">

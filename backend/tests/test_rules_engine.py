@@ -190,6 +190,48 @@ def test_tc012_obesity_exclusion(engine):
     assert result.classifier_certainty in ("exact", "keyword")
 
 
+def test_prescribed_medicine_does_not_trigger_exclusion(engine):
+    """Demo 2A regression: the vision extractor folds the prescribed medication
+    list into the free-text `treatment` field. A prescribed vitamin must NOT
+    void the consultation as an excluded "health supplement" — the claim
+    approves on the consultation fee."""
+    claim = make_claim(ytd_claims_amount=5000)
+    facts = ClaimFacts(
+        diagnosis="Viral Fever",
+        treatment="Tab Paracetamol 650mg - 1-1-1 x 5 days; "
+                  "Tab Vitamin C 500mg - 0-0-1 x 7 days",
+        medicines=[
+            "Tab Paracetamol 650mg - 1-1-1 x 5 days",
+            "Tab Vitamin C 500mg - 0-0-1 x 7 days",
+        ],
+        hospital_name="City Clinic, Bengaluru",
+        line_items=[LineItem(description="Consultation Fee", amount=1500)],
+        bill_total=1500,
+    )
+    trace = []
+    result = engine.adjudicate(claim, facts, trace)
+    assert result.status == DecisionStatus.APPROVED, result.member_message
+    assert result.financial.payable_amount == 1350
+    assert not result.rejection_reasons
+    excl = next(s for s in trace if s.check == "exclusions")
+    assert excl.status.value == "PASS"
+
+
+def test_genuine_excluded_treatment_still_rejected_with_medicines(engine):
+    """The medicine strip must not weaken real exclusions: a genuine excluded
+    procedure in `treatment` is still caught even when medicines are present."""
+    claim = make_claim(member_id="EMP009", treatment_date=date(2024, 10, 18))
+    facts = ClaimFacts(
+        diagnosis="Morbid Obesity — BMI 37",
+        treatment="Bariatric surgery; Tab Vitamin C 500mg x 7 days",
+        medicines=["Tab Vitamin C 500mg x 7 days"],
+    )
+    trace = []
+    result = engine.adjudicate(claim, facts, trace)
+    assert result.status == DecisionStatus.REJECTED
+    assert RejectionReason.EXCLUDED_CONDITION in result.rejection_reasons
+
+
 def test_initial_waiting_period(engine):
     claim = make_claim(
         member_id="EMP005",  # joined 2024-09-01
